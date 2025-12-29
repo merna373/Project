@@ -2,177 +2,186 @@
 
 ## Project Overview
 This project is a **deep learning system** for **semantic segmentation** of **pneumothorax** (collapsed lung) in chest X-ray images.  
-The system uses a **Swin Transformer-based U-Net architecture** to accurately detect and segment pneumothorax regions, helping radiologists in diagnosis.
+The system is designed to automatically analyze medical images, preprocess noisy and imbalanced data, and accurately segment pneumothorax regions using an **EfficientNet-B4 U-Net architecture**.
+
+The pipeline covers the full workflow starting from **data analysis and preprocessing**, passing through **data augmentation and balancing**, and ending with **model training and evaluation**.
 
 ---
 
 ## Key Features
-- **Semantic Segmentation:** Pixel-level detection of pneumothorax regions  
-- **Advanced Architecture:** Swin Transformer encoder + U-Net decoder  
-- **Data Augmentation:** Specialized transformations for medical imaging  
-- **Comprehensive Evaluation:** Dice score, IoU, and visualization tools  
-- **Web Interface:** User-friendly GUI for clinical use  
+- Semantic segmentation of pneumothorax from chest X-ray images
+- Extensive data analysis and quality inspection
+- Automatic mask binarization and normalization
+- Advanced data augmentation strategies
+- Class imbalance handling using weighted sampling
+- Custom EfficientNet-B4 encoder for grayscale images
+- U-Net style decoder with skip connections
+- Combined **BCE + Focal Dice Loss**
+- Early stopping and learning rate scheduling
 
 ---
 
 ## Dataset
 - **Chest X-Ray Images with Pneumothorax Masks**  
-- Dataset from the **SIIM-ACR Pneumothorax Segmentation Challenge**
+- Dataset from Kaggle provided by **vbookshelf**, derived from pneumothorax chest X-ray data and prepared for segmentation tasks.
+- Kaggle Link: https://www.kaggle.com/datasets/vbookshelf/pneumothorax-chest-xray-images-and-masks
+
 
 ### Data Description
 - **Number of Images:** 12,047 chest X-ray images  
-- **Number of Masks:** 12,047 corresponding pneumothorax segmentation masks  
+- **Number of Masks:** 12,047 corresponding binary pneumothorax segmentation masks  
 - **Image Size:** 1024 × 1024  
 - **Image Format:** PNG  
 - **Mask Type:** Binary segmentation masks  
-  - `0` → No pneumothorax  
-  - `1` → Pneumothorax present  
-
-Each image has a corresponding mask with the same filename, stored in a separate folder.
+  - `0` → Background / No pneumothorax  
+  - `1` → Pneumothorax region  
 
 ---
 
 ## Project Structure
 ```text
-Pneumothorax-Detection/
-├── data/
-│   ├── png_images/
-│   ├── png_masks/
-│   └── splits/
+FINAL_DEEP_PROJECT/
+├── backend/
+│   ├── __pycache__/
+│   ├── best_model.pth
+│   ├── DeepLearning_ProjectFF.ipynb
+│   ├── main.py
+│   └── model_arch.py
 │
-├── notebooks/
-│   └── DeepLearning_Project.ipynb
+├── frontend/
 │
-├── models/
-│   └── best_swin_unet.pth
-│
-├── web_app/
-│   ├── frontend/
-│   └── backend/
-│
-├── requirements.txt
 └── README.md
 ```
-## Data Preprocessing Pipeline
-- **Data Validation:** Check for missing/corrupted images  
-- **Class Balance Analysis:** 78% normal vs 22% pneumothorax  
-- **Mask Normalization:** Convert to binary format (0/255)  
-- **Quality Assessment:** Analyze brightness, contrast, noise  
-- **Dataset Splitting:** Train/Val/Test (balanced validation)
+## Data Preprocessing
+The preprocessing pipeline includes:
+- Checking for missing and corrupted images
+- Detecting blank images and empty masks
+- Mask normalization and binarization
+- Dataset balance analysis
+- Lesion size and connected components analysis
+- Brightness, contrast, and noise inspection
 
-### Data Augmentation
-- Vertical flipping  
-- Random brightness/contrast  
-- Gaussian noise  
-- CLAHE enhancement  
-- Random affine transformations  
+All masks are normalized to clean binary values `{0, 255}` to ensure stable training.
+
+## Data Augmentation
+Different augmentation strategies are applied depending on the class:
+
+### Positive Samples (With Pneumothorax)
+- Vertical flipping
+- Random brightness and contrast adjustment
+- Gaussian noise
+- CLAHE (Contrast Limited Adaptive Histogram Equalization)
+- Random affine transformations
+
+### Negative Samples (Normal)
+- Light brightness and contrast changes
+- Mild Gaussian noise
+- Occasional flipping
+
+This strategy helps improve generalization while preserving medical realism.
+ 
+
+## Dataset Balancing
+To handle class imbalance, the project uses:
+- **WeightedRandomSampler** during training
+- Optional undersampling strategies
+- Separate augmentation pipelines for positive and negative samples
+
+This ensures the model is exposed to pneumothorax cases more effectively during training.
 
 ---
 
 ## Model Architecture
-- **Encoder:** Swin-Tiny Transformer (pretrained on ImageNet)  
-- **Decoder:** U-Net style with skip connections  
-- **Loss Function:** Combined BCE + Dice Loss  
-- **Metrics:** Dice Score, IoU  
+### Encoder
+- **EfficientNet-B4**
+- Modified to accept **grayscale (1-channel) images**
+- Pretrained on ImageNet
+- Extracts multi-scale feature maps for skip connections
 
+### Decoder
+- U-Net style decoder
+- Bilinear upsampling
+- Skip connections from encoder layers
+- Final 1×1 convolution for segmentation output
 
-## Model Details
-### SwinUNet Architecture
-```
-Input (1, 224, 224)
-→ Swin-Tiny Encoder
-→ UNet Decoder
-→ Output (1, 224, 224)
-```
-- **Encoder Output Channels:** `[96, 192, 384, 768]`  
-- **Decoder:** 5 upsampling blocks with skip connections  
-- **Final Layer:** 1×1 convolution + sigmoid activation  
+## Loss Function
+The training objective combines:
+- **Binary Cross Entropy Loss**
+- **Focal Dice Loss**
 
+This combination improves performance on small lesion regions and imbalanced segmentation masks.
 
-## Training Configuration
-- **Loss Function:** BCE + Dice Loss (α = 0.5)  
-- **Optimizer:** Adam (lr = 1e-4)  
-- **Batch Size:** 8  
-- **Epochs:** 50 (with early stopping)  
-- **Evaluation Metric:** Dice Score 
+## Training Strategy
+- Optimizer: **Adam**
+- Learning rate scheduling: ReduceLROnPlateau
+- Early stopping based on validation loss
+- Best model checkpoint saving
 
----
-
-Technologies Used
-Backend (Python)
-
-Frontend (Web Interface)
-
-
+## Evaluation
+The model is evaluated on a held-out test set using segmentation loss metrics.  
+Visual inspection of predicted masks and overlay results is also performed to assess qualitative performance.
 
 ---
 
-## Installation Steps
+## Technologies Used
+- Python
+- PyTorch
+- segmentation-models-pytorch
+- OpenCV
+- NumPy & Pandas
+- Matplotlib
+- torchvision
+- Backend: Flask , Api
+- Frontend: React.js , TailwindCSS
 
-### 1. Clone the repository
-```bash
-git clone https://github.com/yourusername/pneumothorax-detection.git
-cd pneumothorax-detection
-```
-### 2. Install dependencies:
-#### Make sure you have Python 3.8+ installed, then run:
+---
+## How to Run
+
+### 1. Environment Setup
+Make sure you have **Python 3.8+** installed on your system.
+Install the required dependencies:
 ```bash
 pip install -r requirements.txt
 ```
-### 3. Prepare the Dataset
-#### Download the SIIM-ACR Pneumothorax Segmentation dataset.
-#### Place the data in the following structure:
+
+### 2. Prepare the Dataset
+Download the SIIM-ACR Pneumothorax Segmentation Dataset
+Convert DICOM images to PNG format
+Ensure that each image has a corresponding binary mask
+Recommended directory structure:
 ```bash
 data/
 ├── png_images/
-├── png_masks/
+└── png_masks/
 ```
 
-### 4. Run the Project (Jupyter Notebook)
-#### All preprocessing, visualization, augmentation, model training, evaluation, and inference are implemented inside a single notebook.
+### 3. Run the Project Notebook
+All preprocessing, data augmentation, model training, evaluation, and visualization are implemented within a single Jupyter Notebook.
 
-### Option 1: Using Jupyter Notebook
+Open the notebook using VS Code:
 ```bash
-jupyter notebook
+notebooks/DeepLearning_ProjectFF.ipynb
 ```
-### Open:
-```bash
-notebooks/DeepLearning_Project.ipynb
-```
-#### Run all cells sequentially from top to bottom.
+* Run all cells sequentially from top to bottom to:
+- Clean and preprocess the dataset
+- Apply data augmentation
+- Train the EfficientNet-B4 U-Net segmentation model
+- Evaluate the model using Dice Score and IoU
+- Visualize segmentation results
 
-### Option 2: Using JupyterLab
-```bash
-jupyter lab
-```
-#### Then open the notebook and run all cells.
+### 4. Inference on New Images
 
-### 5. Run Inference on New Images
-#### Place new X-ray images in the specified inference folder inside the notebook.
+To run inference on new chest X-ray images:
 
-#### Load the trained model:
+Place the images in the specified inference folder (as defined in the notebook)
+
+Load the trained model weights:
 ```bash
-models/best_swin_unet.pth
+best_model.pth
 ```
-#### Run the inference cells to generate predicted masks.
 ---
-## 📈 Results
 
-### Performance Metrics
-
-| Metric | Value |
-|--------|-------|
-| Best Validation Dice Score | 0.85+ |
-| Test Dice Score | 0.83+ |
-| IoU | 0.75+ |
-| Training Time | ~4 hours on GPU |
-
-### Sample Predictions
-![Sample Predictions]()
-
----
 ## Team Roles
-
 | Team Member | Responsibilities |
 |------------|-----------------|
 | Nourhan    | Frontend website development |
@@ -181,4 +190,6 @@ models/best_swin_unet.pth
 | Hadeer & Howaida | Data visualization, augmentation, DataLoader |
 | Yasmine    | Model design & loss functions |
 | Merna      | Model training, evaluation & visualization |
+
+
 
